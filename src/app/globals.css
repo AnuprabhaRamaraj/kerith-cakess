@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-black: #020001;
+  --color-brand-plum: #241124;
+  --color-brand-purple: #3B1635;
+  --color-brand-cream: #FFF7EA;
+  --color-brand-ivory: #DBD8C0;
+  --color-brand-gold: #C9A24A;
+  --color-brand-orange: #FF8A00;
+  --color-brand-lime: #C1DD13;
+}
+
+:root {
+  --background: #020001;
+  --foreground: #FFF7EA;
+}
+
+body {
+  background-color: #020001;
+  color: #FFF7EA;
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #020001;
+}
+::-webkit-scrollbar-thumb {
+  background: #3B1635;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C9A24A;
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(36, 17, 36, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(201, 162, 74, 0.25);
+}
+
+.glass-card {
+  background: linear-gradient(145deg, rgba(36, 17, 36, 0.9) 0%, rgba(59, 22, 53, 0.6) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(201, 162, 74, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(201, 162, 74, 0.5);
+  box-shadow: 0 10px 30px -10px rgba(59, 22, 53, 0.8), 0 0 20px rgba(201, 162, 74, 0.15);
+  transform: translateY(-4px);
+}
+
+.glass-header {
+  background: rgba(2, 0, 1, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(201, 162, 74, 0.2);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #FFF7EA 0%, #C9A24A 55%, #FF8A00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.orange-glow-btn {
+  background: linear-gradient(135deg, #FF8A00 0%, #E07800 100%);
+  box-shadow: 0 4px 15px rgba(255, 138, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.orange-glow-btn:hover {
+  box-shadow: 0 6px 22px rgba(255, 138, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.orange-glow-btn:active {
+  transform: translateY(0);
+}
+
+.lime-badge {
+  background-color: rgba(193, 221, 19, 0.15);
+  color: #C1DD13;
+  border: 1px solid rgba(193, 221, 19, 0.3);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 138, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 138, 0, 0.7);
+  }
+}
+
+.pulse-cta {
+  animation: pulseGlow 3s infinite ease-in-out;
+}
