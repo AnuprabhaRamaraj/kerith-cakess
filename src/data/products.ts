@@ -7,12 +7,53 @@ export interface Product {
   availableWeights: string[];
   offerPrice: number;
   originalPrice: number;
+  weightPrices?: { [weight: string]: { offerPrice: number; originalPrice: number } };
   description: string;
   image: string;
   isBestseller?: boolean;
   isOffer?: boolean;
+  isLive?: boolean;
   rating?: number;
   reviewsCount?: number;
+}
+
+export function getProductPriceForWeight(
+  product: Product,
+  targetWeight?: string
+): { offerPrice: number; originalPrice: number } {
+  if (!targetWeight || targetWeight === product.weight) {
+    if (product.weightPrices && product.weightPrices[product.weight]) {
+      return product.weightPrices[product.weight];
+    }
+    return { offerPrice: product.offerPrice, originalPrice: product.originalPrice };
+  }
+
+  // Check if explicit price is configured for this weight
+  if (product.weightPrices && product.weightPrices[targetWeight]) {
+    return product.weightPrices[targetWeight];
+  }
+
+  // Parse numeric weight values (e.g. "1.5 kg" -> 1.5, "500 g" -> 0.5)
+  const parseKg = (wStr: string): number => {
+    const clean = wStr.toLowerCase().trim();
+    if (clean.includes("kg")) {
+      return parseFloat(clean.replace("kg", "").trim()) || 1;
+    }
+    if (clean.includes("g") || clean.includes("gm") || clean.includes("gram")) {
+      return (parseFloat(clean.replace(/[^0-9.]/g, "").trim()) || 500) / 1000;
+    }
+    return parseFloat(clean) || 1;
+  };
+
+  const baseKg = parseKg(product.weight) || 1;
+  const targetKg = parseKg(targetWeight) || 1;
+  const ratio = targetKg / baseKg;
+
+  // Calculate proportional prices rounded to nearest 10
+  const offerPrice = Math.round((product.offerPrice * ratio) / 10) * 10;
+  const originalPrice = Math.round((product.originalPrice * ratio) / 10) * 10;
+
+  return { offerPrice, originalPrice };
 }
 
 export interface Category {

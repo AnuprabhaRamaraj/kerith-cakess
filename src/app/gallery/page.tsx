@@ -4,11 +4,13 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Sparkles, Plus, Check, ShoppingBag, Eye } from "lucide-react";
-import { PRODUCTS, Product } from "@/data/products";
+import { Product } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 import { useCart } from "@/context/CartContext";
 import { ProductModal } from "@/components/ProductModal";
 
 export default function GalleryPage() {
+  const { products } = useProducts();
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [activeModalProduct, setActiveModalProduct] = useState<Product | null>(null);
   const { addToCart, cart } = useCart();
@@ -23,7 +25,7 @@ export default function GalleryPage() {
     { id: "wedding", label: "Wedding Tiers" },
   ];
 
-  const galleryItems = PRODUCTS.filter((item) => {
+  const galleryItems = products.filter((item) => {
     if (selectedFilter === "all") return true;
     return item.categoryId === selectedFilter;
   });

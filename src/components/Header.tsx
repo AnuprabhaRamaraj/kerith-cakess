@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ShoppingBag, Menu, X, MessageCircle, Phone, ArrowRight, BookOpen } from "lucide-react";
+import { ShoppingBag, Menu, X, MessageCircle, Phone, ArrowRight, BookOpen, User } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
 export const Header: React.FC = () => {
@@ -108,6 +108,20 @@ export const Header: React.FC = () => {
 
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2 lg:gap-3 shrink-0">
+            {/* User / Admin Dashboard Link */}
+            <Link
+              href="/user/dashboard"
+              className={`p-2 sm:p-2.5 rounded-xl border transition-all duration-200 flex items-center gap-1.5 ${
+                pathname === "/user/dashboard"
+                  ? "bg-[#3B1635] border-[#FF8A00] text-[#FF8A00]"
+                  : "bg-[#241124] border-[#C9A24A]/30 hover:border-[#C9A24A] text-[#DBD8C0] hover:text-[#FFF7EA]"
+              }`}
+              title="Admin Portal"
+            >
+              <User size={18} className="text-[#C9A24A]" />
+              <span className="text-xs font-semibold hidden md:inline">Admin</span>
+            </Link>
+
             {/* Cart Icon Link */}
             <Link
               href="/menu"
@@ -139,6 +153,20 @@ export const Header: React.FC = () => {
 
           {/* Mobile Right Controls: Fixed Compact Width, Never overlapping */}
           <div className="flex items-center gap-1.5 shrink-0 sm:hidden">
+            {/* Dashboard Icon Mobile */}
+            <Link
+              href="/user/dashboard"
+              className={`p-2 rounded-lg border transition-colors ${
+                pathname === "/user/dashboard"
+                  ? "bg-[#3B1635] border-[#FF8A00] text-[#FF8A00]"
+                  : "bg-[#241124] border-[#C9A24A]/30 text-[#C9A24A]"
+              }`}
+              title="Admin Portal"
+              aria-label="Admin Portal"
+            >
+              <User size={18} />
+            </Link>
+
             {/* Cart Icon Mobile */}
             <Link
               href="/menu"
@@ -223,6 +251,24 @@ export const Header: React.FC = () => {
                   </Link>
                 );
               })}
+
+              <Link
+                href="/user/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-between ${
+                  pathname === "/user/dashboard"
+                    ? "bg-[#3B1635] text-[#FF8A00] border border-[#FF8A00]/40"
+                    : "text-[#C9A24A] hover:text-white hover:bg-[#241124]"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <User size={16} />
+                  <span>Admin Portal</span>
+                </span>
+                <span className="text-[10px] bg-[#FF8A00]/20 text-[#FF8A00] px-2 py-0.5 rounded-full border border-[#FF8A00]/30 font-bold">
+                  Manager
+                </span>
+              </Link>
             </nav>
           </div>
 

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, Plus, Minus, Check, Star, ShoppingBag, ShieldCheck, Truck, MessageCircle } from "lucide-react";
-import { Product } from "@/data/products";
+import { X, Plus, Minus, Check, Star, ShoppingBag, ShieldCheck, Truck } from "lucide-react";
+import { Product, getProductPriceForWeight } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 
 interface ProductModalProps {
@@ -12,21 +12,32 @@ interface ProductModalProps {
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) => {
-  const { addToCart, cart, updateQuantity } = useCart();
+  const { addToCart } = useCart();
   const [selectedWeight, setSelectedWeight] = useState(product?.weight || "1 kg");
   const [quantity, setQuantity] = useState(1);
   const [customNote, setCustomNote] = useState("");
   const [added, setAdded] = useState(false);
 
+  // Sync weight when a new product is selected
+  useEffect(() => {
+    if (product) {
+      setSelectedWeight(product.weight || "1 kg");
+      setQuantity(1);
+      setCustomNote("");
+    }
+  }, [product]);
+
   if (!product) return null;
 
-  const cartItem = cart.find(
-    (item) => item.product.id === product.id && item.selectedWeight === selectedWeight
-  );
+  // Resolve dynamic price for the currently selected weight
+  const currentPricing = getProductPriceForWeight(product, selectedWeight);
+  const offerPrice = currentPricing.offerPrice;
+  const originalPrice = currentPricing.originalPrice;
 
-  const discountPercent = Math.round(
-    ((product.originalPrice - product.offerPrice) / product.originalPrice) * 100
-  );
+  const discountPercent =
+    originalPrice > offerPrice
+      ? Math.round(((originalPrice - offerPrice) / originalPrice) * 100)
+      : 0;
 
   const handleAddToCart = () => {
     addToCart(product, selectedWeight, quantity, customNote);
@@ -34,7 +45,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
     setTimeout(() => {
       setAdded(false);
       onClose();
-    }, 1200);
+    }, 1000);
   };
 
   return (
@@ -43,7 +54,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-[#020001]/80 text-[#DBD8C0] hover:text-white border border-[#C9A24A]/30"
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-[#020001]/80 text-[#DBD8C0] hover:text-white border border-[#C9A24A]/30 transition-colors"
           aria-label="Close details"
         >
           <X size={20} />
@@ -55,6 +66,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
             src={product.image}
             alt={product.name}
             fill
+            unoptimized={product.image?.startsWith("data:") || product.image?.startsWith("http")}
             className="object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#241124] via-transparent to-transparent md:hidden" />
@@ -85,38 +97,55 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
             <p className="text-xs text-[#DBD8C0] mt-2 leading-relaxed">{product.description}</p>
 
-            {/* Price Section */}
+            {/* Price Section with Dynamic Updates */}
             <div className="mt-4 pt-4 border-t border-[#C9A24A]/20 flex items-baseline gap-3">
-              <span className="text-3xl font-extrabold text-[#FFF7EA]">
-                ₹{product.offerPrice.toLocaleString("en-IN")}
+              <span className="text-3xl font-extrabold text-[#FFF7EA] transition-all">
+                ₹{offerPrice.toLocaleString("en-IN")}
               </span>
-              <span className="text-sm text-[#DBD8C0]/60 line-through">
-                ₹{product.originalPrice.toLocaleString("en-IN")}
-              </span>
-              <span className="text-xs text-[#C1DD13] font-bold bg-[#C1DD13]/10 px-2 py-0.5 rounded border border-[#C1DD13]/30 ml-auto">
-                Save ₹{(product.originalPrice - product.offerPrice).toLocaleString("en-IN")}
-              </span>
+              {originalPrice > offerPrice && (
+                <span className="text-sm text-[#DBD8C0]/60 line-through">
+                  ₹{originalPrice.toLocaleString("en-IN")}
+                </span>
+              )}
+              {originalPrice > offerPrice && (
+                <span className="text-xs text-[#C1DD13] font-bold bg-[#C1DD13]/10 px-2 py-0.5 rounded border border-[#C1DD13]/30 ml-auto">
+                  Save ₹{(originalPrice - offerPrice).toLocaleString("en-IN")}
+                </span>
+              )}
             </div>
 
             {/* Available Weight Selector */}
             <div className="mt-5">
-              <label className="text-xs font-bold text-[#FFF7EA] block mb-2">
-                Select Cake Weight:
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-[#FFF7EA]">
+                  Select Cake Weight:
+                </label>
+                <span className="text-[11px] text-[#C9A24A] font-medium">
+                  Price changes per weight
+                </span>
+              </div>
               <div className="flex flex-wrap gap-2">
-                {product.availableWeights?.map((w) => (
-                  <button
-                    key={w}
-                    onClick={() => setSelectedWeight(w)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                      selectedWeight === w
-                        ? "bg-[#C9A24A] text-[#020001] border-[#C9A24A] shadow-md"
-                        : "bg-[#3B1635] text-[#DBD8C0] border-[#C9A24A]/20 hover:border-[#C9A24A]"
-                    }`}
-                  >
-                    {w}
-                  </button>
-                ))}
+                {product.availableWeights?.map((w) => {
+                  const weightPrice = getProductPriceForWeight(product, w);
+                  const isSelected = selectedWeight === w;
+                  return (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setSelectedWeight(w)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+                        isSelected
+                          ? "bg-[#C9A24A] text-[#020001] border-[#C9A24A] shadow-md font-bold scale-105"
+                          : "bg-[#3B1635] text-[#DBD8C0] border-[#C9A24A]/20 hover:border-[#C9A24A]"
+                      }`}
+                    >
+                      <span>{w}</span>
+                      <span className={`text-[10px] ${isSelected ? "text-black/80 font-bold" : "text-[#C9A24A]"}`}>
+                        (₹{weightPrice.offerPrice})
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -170,8 +199,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                   </>
                 ) : (
                   <>
-                    <ShoppingBag size={18} /> Add to Order (₹
-                    {(product.offerPrice * quantity).toLocaleString("en-IN")})
+                    <ShoppingBag size={18} /> Add {selectedWeight} to Order (₹
+                    {(offerPrice * quantity).toLocaleString("en-IN")})
                   </>
                 )}
               </button>

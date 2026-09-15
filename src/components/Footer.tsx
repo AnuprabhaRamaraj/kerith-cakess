@@ -25,21 +25,27 @@ export const Footer: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Column 1: Brand Info */}
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
+              <Link
+                href="/user/dashboard"
+                className="flex items-center gap-3 group transition-transform hover:opacity-95"
+                title="Open கேரித் Cakes User Dashboard"
+              >
                 <Image
                   src="/images/logo.jpg"
                   alt="கேரித் Cakes Logo"
                   width={50}
                   height={50}
-                  className="rounded-full border-2 border-[#C9A24A] shadow-md shrink-0"
+                  className="rounded-full border-2 border-[#C9A24A] shadow-md shrink-0 group-hover:scale-105 transition-transform"
                 />
                 <div className="flex flex-col">
-                  <h3 className="font-bold text-xl text-[#FFF7EA] font-serif">கேரித் Cakes</h3>
+                  <h3 className="font-bold text-xl text-[#FFF7EA] font-serif group-hover:text-[#FF8A00] transition-colors">
+                    கேரித் Cakes
+                  </h3>
                   <p className="text-[10px] text-[#FF8A00] font-extrabold tracking-wider uppercase">
                     MAKE A TEASTY LIFE
                   </p>
                 </div>
-              </div>
+              </Link>
               <p className="text-xs leading-relaxed text-[#DBD8C0]">
                 Coimbatore’s trusted bakery for fresh cream celebration cakes, customized theme models, and wedding tiers.
               </p>
@@ -78,6 +84,11 @@ export const Footer: React.FC = () => {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/user/dashboard" className="hover:text-[#FF8A00] text-[#C9A24A] font-semibold transition-colors flex items-center gap-1">
+                    <span>⚙️</span> Admin Portal
+                  </Link>
+                </li>
+                <li>
                   <Link href="/contact" className="hover:text-[#FF8A00] transition-colors">
                     Store Location & Contact
                   </Link>
@@ -94,7 +105,13 @@ export const Footer: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <MapPin size={16} className="text-[#C9A24A] shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    <strong className="text-[#FFF7EA]">கேரித் Cakes</strong>
+                    <Link
+                      href="/user/dashboard"
+                      className="text-[#FFF7EA] hover:text-[#FF8A00] font-bold transition-colors"
+                      title="Open User Dashboard"
+                    >
+                      கேரித் Cakes
+                    </Link>
                     <br />
                     148, Kannimar Nagar, Sathy Main Road,
                     <br />
@@ -157,7 +174,15 @@ export const Footer: React.FC = () => {
           {/* Bottom Bar */}
           <div className="mt-8 pt-4 border-t border-[#3B1635] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <p className="text-center sm:text-left text-[#DBD8C0]">
-              © {new Date().getFullYear()} கேரித் Cakes (MAKE A TEASTY LIFE). All rights reserved.
+              © {new Date().getFullYear()}{" "}
+              <Link
+                href="/user/dashboard"
+                className="hover:text-[#FF8A00] font-semibold transition-colors text-white"
+                title="Go to User Dashboard"
+              >
+                கேரித் Cakes
+              </Link>{" "}
+              (MAKE A TEASTY LIFE). All rights reserved.
             </p>
             <div className="flex items-center gap-3">
               <button

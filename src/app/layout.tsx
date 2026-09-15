@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ProductsProvider } from "@/context/ProductsContext";
 import { CartProvider } from "@/context/CartContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -57,13 +58,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full dark`}>
       <body className="min-h-full flex flex-col bg-[#020001] text-[#FFF7EA] antialiased selection:bg-[#FF8A00] selection:text-white">
-        <CartProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <MobileBottomBar />
-          <FloatingWhatsApp />
-        </CartProvider>
+        <ProductsProvider>
+          <CartProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <MobileBottomBar />
+            <FloatingWhatsApp />
+          </CartProvider>
+        </ProductsProvider>
       </body>
     </html>
   );

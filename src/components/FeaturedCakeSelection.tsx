@@ -2,18 +2,22 @@
 
 import React, { useState, useMemo } from "react";
 import { Search, Sparkles } from "lucide-react";
-import { PRODUCTS, FEATURED_CATEGORIES, Product } from "@/data/products";
+import { Product } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 import { CatalogueRow } from "./CatalogueRow";
 import { ProductModal } from "./ProductModal";
 
 export const FeaturedCakeSelection: React.FC = () => {
+  const { products, categories } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeModalProduct, setActiveModalProduct] = useState<Product | null>(null);
 
   // Filtered Products based on selected category chip & search query
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((product) => {
+    return products.filter((product) => {
+      const isLiveMatch = product.isLive !== false;
+
       const categoryMatch =
         selectedCategory === "all" || product.categoryId === selectedCategory;
 
@@ -23,9 +27,11 @@ export const FeaturedCakeSelection: React.FC = () => {
         product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return categoryMatch && searchMatch;
+      return isLiveMatch && categoryMatch && searchMatch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery]);
+
+  const liveProducts = products.filter((p) => p.isLive !== false);
 
   return (
     <section id="featured-cakes" className="py-10 sm:py-16 bg-gradient-to-b from-[#020001] via-[#120614] to-[#020001] relative">
@@ -43,17 +49,15 @@ export const FeaturedCakeSelection: React.FC = () => {
           </p>
         </div>
 
-        {/* 2. Category Filters:
-            - Mobile: One horizontally scrollable row (overflow-x-auto, scrollbar-none, 320px touch friendly)
-            - Desktop: Compact premium chips wrapping into multiple rows */}
+        {/* 2. Category Filters */}
         <div className="mb-4">
           <div className="flex md:flex-wrap items-center gap-1.5 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-none">
-            {FEATURED_CATEGORIES.map((cat) => {
+            {categories.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               const count =
                 cat.id === "all"
-                  ? PRODUCTS.length
-                  : PRODUCTS.filter((p) => p.categoryId === cat.id).length;
+                  ? liveProducts.length
+                  : liveProducts.filter((p) => p.categoryId === cat.id).length;
 
               return (
                 <button

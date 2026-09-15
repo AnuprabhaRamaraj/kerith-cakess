@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Product } from "@/data/products";
+import { Product, getProductPriceForWeight } from "@/data/products";
 
 export interface CartItem {
   product: Product;
@@ -152,7 +152,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const grandTotal = cart.reduce((sum, item) => {
-    return sum + item.product.offerPrice * item.quantity;
+    const { offerPrice } = getProductPriceForWeight(item.product, item.selectedWeight);
+    return sum + offerPrice * item.quantity;
   }, 0);
 
   // Generate and direct order on WhatsApp with full multi-item format
@@ -164,12 +165,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let orderItemsText = "";
     cart.forEach((item) => {
-      const subtotal = item.product.offerPrice * item.quantity;
+      const { offerPrice } = getProductPriceForWeight(item.product, item.selectedWeight);
+      const subtotal = offerPrice * item.quantity;
       orderItemsText += `Cake: ${item.product.name}
 Weight/Description: ${item.selectedWeight}
 Quantity: ${item.quantity}
-Price: ₹${item.product.offerPrice.toLocaleString("en-IN")}
-Subtotal: ₹${subtotal.toLocaleString("en-IN")}\n\n`;
+Price: ₹${offerPrice.toLocaleString("en-IN")}
+Subtotal: ₹${subtotal.toLocaleString("en-IN")}${item.customNote ? `\nMessage: "${item.customNote}"` : ""}\n\n`;
     });
 
     const message = `Hello கேரித் Cakes,

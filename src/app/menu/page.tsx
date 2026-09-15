@@ -4,7 +4,8 @@ import React, { useState, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, ArrowLeft, BookOpen, ShoppingBag, MessageCircle, Sparkles } from "lucide-react";
-import { PRODUCTS, FEATURED_CATEGORIES, Product } from "@/data/products";
+import { Product } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 import { CatalogueRow } from "@/components/CatalogueRow";
 import { ProductModal } from "@/components/ProductModal";
 import { useCart } from "@/context/CartContext";
@@ -13,6 +14,7 @@ function MenuContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") || "all";
 
+  const { products, categories } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeModalProduct, setActiveModalProduct] = useState<Product | null>(null);
@@ -20,7 +22,9 @@ function MenuContent() {
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((product) => {
+    return products.filter((product) => {
+      const isLiveMatch = product.isLive !== false;
+
       const categoryMatch =
         selectedCategory === "all" || product.categoryId === selectedCategory;
 
@@ -30,9 +34,11 @@ function MenuContent() {
         product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return categoryMatch && searchMatch;
+      return isLiveMatch && categoryMatch && searchMatch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery]);
+
+  const liveProducts = products.filter((p) => p.isLive !== false);
 
   return (
     <div className="min-h-screen bg-[#020001] pb-32 text-[#FFF7EA]">
@@ -117,10 +123,10 @@ function MenuContent() {
                 : "bg-[#1f0d21] text-[#DBD8C0] border border-[#3B1635] hover:border-[#C9A24A]"
             }`}
           >
-            All ({PRODUCTS.length})
+            All ({liveProducts.length})
           </button>
-          {FEATURED_CATEGORIES.filter((c) => c.id !== "all").map((cat) => {
-            const count = PRODUCTS.filter((p) => p.categoryId === cat.id).length;
+          {categories.filter((c) => c.id !== "all").map((cat) => {
+            const count = liveProducts.filter((p) => p.categoryId === cat.id).length;
             return (
               <button
                 key={cat.id}

@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { Plus, Minus, Star, Info } from "lucide-react";
-import { Product } from "@/data/products";
+import { Plus, Minus, Star, ChevronDown } from "lucide-react";
+import { Product, getProductPriceForWeight } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 
 interface CatalogueRowProps {
@@ -13,9 +13,13 @@ interface CatalogueRowProps {
 
 export const CatalogueRow: React.FC<CatalogueRowProps> = ({ product, onOpenDetails }) => {
   const { addToCart, cart, updateQuantity } = useCart();
-  const [selectedWeight] = useState(product.weight);
+  const [selectedWeight, setSelectedWeight] = useState(product.weight);
 
-  // Check if item is in cart
+  const pricing = getProductPriceForWeight(product, selectedWeight);
+  const currentOfferPrice = pricing.offerPrice;
+  const currentOriginalPrice = pricing.originalPrice;
+
+  // Check if item is in cart with the currently selected weight
   const cartItem = cart.find(
     (item) => item.product.id === product.id && item.selectedWeight === selectedWeight
   );
@@ -48,6 +52,7 @@ export const CatalogueRow: React.FC<CatalogueRowProps> = ({ product, onOpenDetai
           alt={product.name}
           fill
           sizes="84px"
+          unoptimized={product.image?.startsWith("data:") || product.image?.startsWith("http")}
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {product.isOffer && (
@@ -57,26 +62,50 @@ export const CatalogueRow: React.FC<CatalogueRowProps> = ({ product, onOpenDetai
         )}
       </div>
 
-      {/* 2. Centre: Flexible Cake Information (min-width: 0) */}
+      {/* 2. Centre: Flexible Cake Information */}
       <div className="flex flex-col justify-center flex-1 min-w-0 pr-1">
         {/* Title */}
         <h3 className="font-bold text-sm sm:text-base text-white group-hover:text-[#C9A24A] transition-colors leading-snug truncate">
           {product.name}
         </h3>
 
-        {/* Weight & Category / Short description */}
-        <p className="text-xs text-[#DBD8C0]/70 truncate mt-0.5">
-          {product.weight} • {product.description}
-        </p>
+        {/* Weight Selector & Category Description */}
+        <div className="flex items-center gap-1.5 mt-0.5" onClick={(e) => e.stopPropagation()}>
+          {product.availableWeights && product.availableWeights.length > 1 ? (
+            <select
+              value={selectedWeight}
+              onChange={(e) => setSelectedWeight(e.target.value)}
+              className="bg-[#241124] text-[11px] font-semibold text-[#C9A24A] rounded-lg px-2 py-0.5 border border-[#C9A24A]/30 focus:outline-none focus:border-[#FF8A00] cursor-pointer"
+            >
+              {product.availableWeights.map((w) => {
+                const p = getProductPriceForWeight(product, w);
+                return (
+                  <option key={w} value={w} className="bg-[#241124] text-white">
+                    {w} - ₹{p.offerPrice}
+                  </option>
+                );
+              })}
+            </select>
+          ) : (
+            <span className="text-xs text-[#C9A24A] font-semibold">
+              {selectedWeight}
+            </span>
+          )}
+          <span className="text-xs text-[#DBD8C0]/50 truncate hidden sm:inline">
+            • {product.description}
+          </span>
+        </div>
 
         {/* Pricing Row */}
-        <div className="flex items-center gap-2 mt-1.5">
+        <div className="flex items-center gap-2 mt-1">
           <span className="text-sm sm:text-base font-extrabold text-[#FFF7EA]">
-            ₹{product.offerPrice.toLocaleString("en-IN")}
+            ₹{currentOfferPrice.toLocaleString("en-IN")}
           </span>
-          <span className="text-xs text-[#DBD8C0]/50 line-through">
-            ₹{product.originalPrice.toLocaleString("en-IN")}
-          </span>
+          {currentOriginalPrice > currentOfferPrice && (
+            <span className="text-xs text-[#DBD8C0]/50 line-through">
+              ₹{currentOriginalPrice.toLocaleString("en-IN")}
+            </span>
+          )}
           {product.rating && (
             <span className="hidden sm:inline-flex items-center gap-0.5 text-[11px] text-[#FF8A00] font-bold ml-1">
               <Star size={10} fill="#FF8A00" />
