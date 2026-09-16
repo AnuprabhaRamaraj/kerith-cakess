@@ -172,8 +172,8 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Bottom Bar */}
-          <div className="mt-8 pt-4 border-t border-[#3B1635] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <p className="text-center sm:text-left text-[#DBD8C0]">
+          <div className="mt-8 pt-4 border-t border-[#3B1635] flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+            <p className="text-center md:text-left text-[#DBD8C0]">
               © {new Date().getFullYear()}{" "}
               <Link
                 href="/user/dashboard"
@@ -184,6 +184,12 @@ export const Footer: React.FC = () => {
               </Link>{" "}
               (MAKE A TEASTY LIFE). All rights reserved.
             </p>
+            <div className="text-center text-[11px] text-[#DBD8C0]">
+              Developed by{" "}
+              <span className="text-[#C9A24A] font-bold tracking-wide">
+                GK infotech
+              </span>
+            </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => openLegalModal("privacy")}

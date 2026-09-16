@@ -250,7 +250,7 @@ export default function AdminDashboardPage() {
     setAuthError("");
 
     if (!emailInput.trim()) {
-      setAuthError("Please enter your admin email.");
+      setAuthError("Please enter your admin username or email.");
       return;
     }
     if (!passwordInput) {
@@ -261,9 +261,11 @@ export default function AdminDashboardPage() {
     setIsAuthenticating(true);
     setTimeout(() => {
       setIsAuthenticating(false);
+      const inputTrim = emailInput.trim().toLowerCase();
       const matchedUser = adminUsers.find(
         (u) =>
-          u.email.trim().toLowerCase() === emailInput.trim().toLowerCase() &&
+          (u.email.trim().toLowerCase() === inputTrim ||
+            u.name.trim().toLowerCase() === inputTrim) &&
           u.password === passwordInput
       );
 
@@ -273,18 +275,9 @@ export default function AdminDashboardPage() {
         localStorage.setItem("kerith_active_admin_email", matchedUser.email);
         showToast(`Welcome, ${matchedUser.name}!`);
       } else {
-        setAuthError("Invalid email or password. Please check your admin credentials.");
+        setAuthError("Invalid username/email or password. Please check your admin credentials.");
       }
     }, 400);
-  };
-
-  const handleQuickDemoLogin = (userToUse: AdminUser) => {
-    setEmailInput(userToUse.email);
-    setPasswordInput(userToUse.password);
-    setCurrentLoggedInAdmin(userToUse);
-    setIsAdminLoggedIn(true);
-    localStorage.setItem("kerith_active_admin_email", userToUse.email);
-    showToast(`Logged in as ${userToUse.name}.`);
   };
 
   const handleAdminLogout = () => {
@@ -625,16 +618,16 @@ export default function AdminDashboardPage() {
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-[#DBD8C0] mb-1.5">
-                  Admin Email Address
+                  Admin Username or Email Address
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C9A24A] w-4 h-4" />
                   <input
-                    type="email"
+                    type="text"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="e.g. admin@kerithcakes.com"
-                    autoComplete="email"
+                    placeholder="Username or admin@kerithcakes.com"
+                    autoComplete="username"
                     required
                     className="w-full pl-10 pr-4 py-2.5 bg-[#020001]/80 border border-[#3B1635] focus:border-[#FF8A00] rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#FF8A00]"
                   />
@@ -684,32 +677,6 @@ export default function AdminDashboardPage() {
                 )}
               </button>
             </form>
-
-            {/* Quick Demo Access Options for Configured Admins */}
-            <div className="mt-5 pt-4 border-t border-[#3B1635] space-y-2">
-              <span className="text-[11px] text-[#DBD8C0] block text-center">
-                Quick 1-Click Login for Configured Admins ({adminUsers.length}/3):
-              </span>
-              <div className="grid grid-cols-1 gap-1.5">
-                {adminUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => handleQuickDemoLogin(user)}
-                    className="w-full py-2 px-3 rounded-xl bg-[#241124] border border-[#C9A24A]/30 hover:border-[#C9A24A] text-left text-xs text-white flex items-center justify-between transition-colors group"
-                  >
-                    <span className="flex items-center gap-1.5 truncate">
-                      <User size={13} className="text-[#C9A24A]" />
-                      <strong className="text-white">{user.name}</strong>
-                      <span className="text-[10px] text-gray-400">({user.email})</span>
-                    </span>
-                    <span className="text-[10px] text-[#FF8A00] font-bold group-hover:underline shrink-0">
-                      Login →
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="text-center mt-6">
