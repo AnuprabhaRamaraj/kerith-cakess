@@ -180,49 +180,59 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Process Local Image File (Compress / Resize with Canvas for crisp storage)
-  const processImageFile = (file: File) => {
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+
+  // Helper to delete old custom uploaded image from disk via API
+  const deleteOldUploadedImage = async (imageUrl: string) => {
+    if (!imageUrl || !imageUrl.startsWith("/images/cakes/")) return;
+    try {
+      await fetch(`/api/upload?imageUrl=${encodeURIComponent(imageUrl)}`, {
+        method: "DELETE",
+      });
+    } catch (e) {
+      console.error("Failed to delete old image:", e);
+    }
+  };
+
+  // Process Local Image File (Uploads directly to /images/cakes/ locally)
+  const processImageFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       alert("Please select a valid image file (JPEG, PNG, WebP).");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = document.createElement("img");
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-          setFormImage(compressedDataUrl);
-          setImageSourceMode("upload");
-          showToast(`Photo "${file.name}" loaded successfully!`);
+      const data = await res.json();
+      if (data.success && data.url) {
+        // If current form has an uploaded temporary file different from current product, clean it up
+        if (
+          formImage &&
+          formImage.startsWith("/images/cakes/") &&
+          formImage !== editingProduct?.image
+        ) {
+          deleteOldUploadedImage(formImage);
         }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+        setFormImage(data.url);
+        setImageSourceMode("upload");
+        showToast(`Photo "${file.name}" saved locally!`);
+      } else {
+        alert(data.error || "Failed to upload image locally.");
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Error saving image to local storage.");
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // Drag and Drop Handlers
@@ -319,7 +329,7 @@ export default function AdminDashboardPage() {
     setFormCategoryId(product.categoryId);
     setFormDescription(product.description);
     setFormImage(product.image);
-    setImageSourceMode(product.image.startsWith("data:") ? "upload" : "preset");
+    setImageSourceMode(product.image.startsWith("/images/cakes/") ? "upload" : "preset");
     setFormBaseWeight(product.weight);
     setFormAvailableWeights(product.availableWeights || [product.weight]);
     setFormOfferPrice(product.offerPrice);
@@ -342,7 +352,7 @@ export default function AdminDashboardPage() {
   };
 
   // Save Cake
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
       alert("Please enter cake name.");
@@ -350,6 +360,11 @@ export default function AdminDashboardPage() {
     }
 
     if (editingProduct) {
+      // If the image changed, delete the old custom image file from disk
+      if (editingProduct.image && editingProduct.image !== formImage) {
+        await deleteOldUploadedImage(editingProduct.image);
+      }
+
       updateProduct(editingProduct.id, {
         name: formName,
         category: formCategory,
@@ -388,8 +403,12 @@ export default function AdminDashboardPage() {
     setIsModalOpen(false);
   };
 
-  const handleDeleteCake = (id: string, name: string) => {
+  const handleDeleteCake = async (id: string, name: string) => {
+    const targetProduct = products.find((p) => p.id === id);
     if (confirm(`Are you sure you want to delete "${name}" from the catalogue?`)) {
+      if (targetProduct?.image) {
+        await deleteOldUploadedImage(targetProduct.image);
+      }
       deleteProduct(id);
       showToast(`Deleted "${name}".`);
     }
@@ -1315,14 +1334,25 @@ export default function AdminDashboardPage() {
                           className="hidden"
                         />
                         <div className="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
-                          <Upload size={20} className="text-[#FF8A00]" />
-                          <p className="text-xs font-bold text-white">
-                            Drag & drop cake image here, or{" "}
-                            <span className="text-[#C9A24A] underline">browse local device</span>
-                          </p>
-                          <p className="text-[10px] text-[#DBD8C0]/70">
-                            Supports JPG, PNG, WEBP • Automatically optimized for web
-                          </p>
+                          {isUploadingImage ? (
+                            <>
+                              <RefreshCw size={22} className="text-[#FF8A00] animate-spin" />
+                              <p className="text-xs font-bold text-[#FF8A00]">
+                                Saving image to local bakery storage...
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload size={20} className="text-[#FF8A00]" />
+                              <p className="text-xs font-bold text-white">
+                                Drag & drop cake image here, or{" "}
+                                <span className="text-[#C9A24A] underline">browse local device</span>
+                              </p>
+                              <p className="text-[10px] text-[#DBD8C0]/70">
+                                Stored locally in /images/cakes/ • Old images automatically cleaned up
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
