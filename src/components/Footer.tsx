@@ -83,11 +83,11 @@ export const Footer: React.FC = () => {
                     Photo Gallery
                   </Link>
                 </li>
-                <li>
+                {/* <li>
                   <Link href="/user/dashboard" className="hover:text-[#FF8A00] text-[#C9A24A] font-semibold transition-colors flex items-center gap-1">
                     <span>⚙️</span> Admin Portal
                   </Link>
-                </li>
+                </li> */}
                 <li>
                   <Link href="/contact" className="hover:text-[#FF8A00] transition-colors">
                     Store Location & Contact
