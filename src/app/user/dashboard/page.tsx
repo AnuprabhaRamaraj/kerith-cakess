@@ -31,9 +31,11 @@ import {
   Image as ImageIcon,
   FolderOpen,
   ChevronDown,
+  BarChart3,
 } from "lucide-react";
 import { Product, getProductPriceForWeight } from "@/data/products";
 import { useProducts } from "@/context/ProductsContext";
+import { WebsiteAnalyticsSection } from "@/components/WebsiteAnalyticsSection";
 
 interface AdminUser {
   id: string;
@@ -92,7 +94,7 @@ export default function AdminDashboardPage() {
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
   // Active Admin View Tab
-  const [activeAdminTab, setActiveAdminTab] = useState<"catalogue" | "admin_users">("catalogue");
+  const [activeAdminTab, setActiveAdminTab] = useState<"catalogue" | "admin_users" | "analytics">("catalogue");
 
   // Admin Search & Filter State
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -194,7 +196,50 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Process Local Image File (Uploads directly to /images/cakes/ locally)
+  // Client-side canvas compression helper for reliable storage in all environments
+  const compressImageToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = document.createElement("img");
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.85));
+          } else {
+            resolve(event.target?.result as string);
+          }
+        };
+        img.onerror = reject;
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Process Local Image File (Tries API first, seamlessly falls back to optimized Base64 in serverless/static production)
   const processImageFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       alert("Please select a valid image file (JPEG, PNG, WebP).");
@@ -203,6 +248,7 @@ export default function AdminDashboardPage() {
 
     setIsUploadingImage(true);
     try {
+      // 1. Try uploading to local /api/upload endpoint
       const formData = new FormData();
       formData.append("file", file);
 
@@ -211,25 +257,40 @@ export default function AdminDashboardPage() {
         body: formData,
       });
 
-      const data = await res.json();
-      if (data.success && data.url) {
-        // If current form has an uploaded temporary file different from current product, clean it up
-        if (
-          formImage &&
-          formImage.startsWith("/images/cakes/") &&
-          formImage !== editingProduct?.image
-        ) {
-          deleteOldUploadedImage(formImage);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.url) {
+          if (
+            formImage &&
+            formImage.startsWith("/images/cakes/") &&
+            formImage !== editingProduct?.image
+          ) {
+            deleteOldUploadedImage(formImage);
+          }
+          setFormImage(data.url);
+          setImageSourceMode("upload");
+          showToast(`Photo "${file.name}" saved locally!`);
+          setIsUploadingImage(false);
+          return;
         }
-        setFormImage(data.url);
-        setImageSourceMode("upload");
-        showToast(`Photo "${file.name}" saved locally!`);
-      } else {
-        alert(data.error || "Failed to upload image locally.");
       }
+
+      // 2. Fallback to client-side compressed DataURL if server endpoint is read-only or serverless
+      const compressedDataUrl = await compressImageToDataUrl(file);
+      setFormImage(compressedDataUrl);
+      setImageSourceMode("upload");
+      showToast(`Photo "${file.name}" loaded & optimized!`);
     } catch (err) {
-      console.error("Upload error:", err);
-      alert("Error saving image to local storage.");
+      console.warn("Server upload fallback triggered:", err);
+      try {
+        const compressedDataUrl = await compressImageToDataUrl(file);
+        setFormImage(compressedDataUrl);
+        setImageSourceMode("upload");
+        showToast(`Photo "${file.name}" loaded & optimized!`);
+      } catch (canvasErr) {
+        console.error("Canvas compression error:", canvasErr);
+        alert("Error loading image. Please try another photo.");
+      }
     } finally {
       setIsUploadingImage(false);
     }
@@ -584,6 +645,11 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#020001] via-[#150717] to-[#020001] text-[#FFF7EA] py-8 px-3 sm:px-6 lg:px-8">
+      <head>
+        <title>Admin Portal & Menu Controller | கேரித் Cakes</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-4 z-50 bg-[#C1DD13] text-black font-bold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-slideIn">
@@ -787,6 +853,18 @@ export default function AdminDashboardPage() {
               >
                 <Users size={14} />
                 <span>Admin Users Management ({adminUsers.length}/3)</span>
+              </button>
+
+              <button
+                onClick={() => setActiveAdminTab("analytics")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  activeAdminTab === "analytics"
+                    ? "bg-[#FF8A00] text-white shadow"
+                    : "bg-[#020001] text-[#DBD8C0] hover:text-white"
+                }`}
+              >
+                <BarChart3 size={14} />
+                <span>Website Analytics</span>
               </button>
 
               <button
@@ -1156,6 +1234,11 @@ export default function AdminDashboardPage() {
                 })}
               </div>
             </div>
+          )}
+
+          {/* TAB 3: WEBSITE ANALYTICS */}
+          {activeAdminTab === "analytics" && (
+            <WebsiteAnalyticsSection />
           )}
         </div>
       )}

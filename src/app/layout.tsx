@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { MobileBottomBar } from "@/components/MobileBottomBar";
 import { FloatingWhatsApp } from "@/components/FloatingWhatsApp";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -14,8 +15,17 @@ const inter = Inter({
   display: "swap",
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  "https://kerithcakes.com";
+
 export const metadata: Metadata = {
-  title: "கேரித் Cakes | Fresh Cream & Custom Cakes in Coimbatore",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "கேரித் Cakes | Fresh Cream & Custom Cakes in Coimbatore",
+    template: "%s | கேரித் Cakes",
+  },
   description:
     "MAKE A TEASTY LIFE — Order fresh, hygienic and tasty celebration cakes from கேரித் Cakes in Ganapathy, Coimbatore. Select your favourite cakes and place your complete order through WhatsApp.",
   keywords: [
@@ -24,10 +34,27 @@ export const metadata: Metadata = {
     "Fresh cream cakes in Coimbatore",
     "Birthday cakes in Ganapathy",
     "Custom cakes in Coimbatore",
-    "Cake shop near Surya Hospital",
+    "Wedding cakes Coimbatore",
+    "Cake shop near Surya Hospital Ganapathy",
     "WhatsApp cake ordering in Coimbatore",
   ],
   authors: [{ name: "கேரித் Cakes" }],
+  creator: "கேரித் Cakes",
+  publisher: "கேரித் Cakes",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: "/images/logo.jpg",
     shortcut: "/images/logo.jpg",
@@ -37,6 +64,8 @@ export const metadata: Metadata = {
     title: "கேரித் Cakes | Fresh Cream & Custom Cakes in Coimbatore",
     description:
       "MAKE A TEASTY LIFE — Fresh, hygienic & tasty celebration cakes in Ganapathy, Coimbatore. Order online & dispatch via WhatsApp.",
+    url: "/",
+    siteName: "கேரித் Cakes",
     images: [
       {
         url: "/images/logo.jpg",
@@ -48,6 +77,13 @@ export const metadata: Metadata = {
     locale: "en_IN",
     type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "கேரித் Cakes | Fresh Cream & Custom Cakes in Coimbatore",
+    description:
+      "MAKE A TEASTY LIFE — Fresh cream celebration cakes in Ganapathy, Coimbatore. Order via WhatsApp.",
+    images: ["/images/logo.jpg"],
+  },
 };
 
 export default function RootLayout({
@@ -58,6 +94,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full dark`}>
       <body className="min-h-full flex flex-col bg-[#020001] text-[#FFF7EA] antialiased selection:bg-[#FF8A00] selection:text-white">
+        <GoogleAnalytics />
         <ProductsProvider>
           <CartProvider>
             <Header />

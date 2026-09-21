@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /menu
+Allow: /custom-cake
+Allow: /gallery
+Allow: /cart
+Allow: /contact
+Allow: /images/
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.jpg$
+Allow: /*.png$
+Allow: /*.webp$
+Allow: /*.svg$
+Disallow: /user/
+Disallow: /user/dashboard
+Disallow: /api/
+
+Sitemap: https://kerithcakes.com/sitemap.xml
