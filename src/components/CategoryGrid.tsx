@@ -4,7 +4,8 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { CATEGORIES, Category } from "@/data/products";
+import { Category } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 
 interface CategoryGridProps {
   selectedCategoryId?: string;
@@ -15,6 +16,8 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
   selectedCategoryId,
   onSelectCategory,
 }) => {
+  const { exploreCategories, getImageSrc } = useProducts();
+
   return (
     <section className="py-16 bg-[#020001] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -43,7 +46,7 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
 
         {/* Category Grid Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          {CATEGORIES.map((cat: Category) => {
+          {exploreCategories.map((cat: Category) => {
             const isSelected = selectedCategoryId === cat.id;
 
             const cardContent = (
@@ -54,13 +57,14 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({
                     : "border-[#C9A24A]/20 hover:border-[#C9A24A]/70"
                 }`}
               >
-                {/* Background Image */}
+                {/* Background Image — cache-busted for admin-uploaded images */}
                 <Image
-                  src={cat.image}
+                  src={getImageSrc(cat.image)}
                   alt={cat.name}
                   fill
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  unoptimized={cat.image.startsWith("data:")}
                 />
 
                 {/* Dark Gradient Overlay */}

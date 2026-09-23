@@ -32,6 +32,10 @@ import {
   FolderOpen,
   ChevronDown,
   BarChart3,
+  LayoutGrid,
+  Tag,
+  Pencil,
+  ShieldAlert,
 } from "lucide-react";
 import { Product, getProductPriceForWeight } from "@/data/products";
 import { useProducts } from "@/context/ProductsContext";
@@ -74,11 +78,18 @@ export default function AdminDashboardPage() {
   const {
     products,
     categories,
+    exploreCategories,
     addProduct,
     updateProduct,
     deleteProduct,
     toggleFeatured,
     toggleLive,
+    getImageSrc,
+    addExploreCategory,
+    updateExploreCategory,
+    deleteExploreCategory,
+    addFeaturedCategory,
+    deleteFeaturedCategory,
   } = useProducts();
 
   // Admin Accounts State (Up to 3 Users)
@@ -94,7 +105,20 @@ export default function AdminDashboardPage() {
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
   // Active Admin View Tab
-  const [activeAdminTab, setActiveAdminTab] = useState<"catalogue" | "admin_users" | "analytics">("catalogue");
+  const [activeAdminTab, setActiveAdminTab] = useState<"catalogue" | "admin_users" | "analytics" | "categories">("catalogue");
+
+  // ── Category Management State ──────────────────────────────────────────
+  // Explore Categories (homepage showcase) modal
+  const [isExploreCatModalOpen, setIsExploreCatModalOpen] = useState<boolean>(false);
+  const [editingExploreCat, setEditingExploreCat] = useState<{ id: string; name: string; image: string; description?: string } | null>(null);
+  const [exploreCatFormName, setExploreCatFormName] = useState<string>("");
+  const [exploreCatFormImage, setExploreCatFormImage] = useState<string>("");
+  const [exploreCatFormDesc, setExploreCatFormDesc] = useState<string>("");
+  const [isExploreCatUploading, setIsExploreCatUploading] = useState<boolean>(false);
+  const exploreCatFileRef = useRef<HTMLInputElement>(null);
+  // Featured (filter) category add
+  const [newFeaturedCatName, setNewFeaturedCatName] = useState<string>("");
+  const [newFeaturedCatId, setNewFeaturedCatId] = useState<string>("");
 
   // Admin Search & Filter State
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -868,6 +892,18 @@ export default function AdminDashboardPage() {
               </button>
 
               <button
+                onClick={() => setActiveAdminTab("categories")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  activeAdminTab === "categories"
+                    ? "bg-[#FF8A00] text-white shadow"
+                    : "bg-[#020001] text-[#DBD8C0] hover:text-white"
+                }`}
+              >
+                <LayoutGrid size={14} />
+                <span>Categories ({exploreCategories.length})</span>
+              </button>
+
+              <button
                 onClick={() => {
                   if (currentLoggedInAdmin) {
                     handleOpenEditAdminUser(currentLoggedInAdmin);
@@ -1032,7 +1068,7 @@ export default function AdminDashboardPage() {
                               <div className="flex items-center gap-3">
                                 <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#241124] border border-[#C9A24A]/30 shrink-0">
                                   <Image
-                                    src={prod.image}
+                                    src={getImageSrc(prod.image, (prod as {updatedAt?: number}).updatedAt)}
                                     alt={prod.name}
                                     fill
                                     unoptimized={prod.image.startsWith("data:") || prod.image.startsWith("http")}
@@ -1240,6 +1276,381 @@ export default function AdminDashboardPage() {
           {activeAdminTab === "analytics" && (
             <WebsiteAnalyticsSection />
           )}
+
+          {/* TAB 4: CATEGORIES MANAGEMENT */}
+          {activeAdminTab === "categories" && (
+            <div className="space-y-6 animate-fadeIn">
+
+              {/* ── SECTION A: Explore Categories (Homepage Showcase) ── */}
+              <div className="glass-card rounded-2xl p-5 border border-[#C9A24A]/25 shadow-xl">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#3B1635]">
+                  <div>
+                    <h2 className="text-lg font-bold font-serif text-[#FFF7EA] flex items-center gap-2">
+                      <LayoutGrid size={18} className="text-[#C9A24A]" />
+                      <span>Explore Categories <span className="text-sm font-normal text-[#DBD8C0]">(Homepage Showcase Cards)</span></span>
+                    </h2>
+                    <p className="text-xs text-[#DBD8C0] mt-0.5">
+                      These are the visual category cards shown on the homepage. Edit images, descriptions, or add new categories.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingExploreCat(null);
+                      setExploreCatFormName("");
+                      setExploreCatFormImage("");
+                      setExploreCatFormDesc("");
+                      setIsExploreCatModalOpen(true);
+                    }}
+                    className="orange-glow-btn px-4 py-2 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shrink-0"
+                  >
+                    <Plus size={14} />
+                    <span>Add Category</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                  {exploreCategories.map((cat) => {
+                    const isDefault = ["birthday", "anniversary", "fresh-cream", "custom", "wedding"].includes(cat.id);
+                    return (
+                      <div key={cat.id} className="relative rounded-2xl overflow-hidden border border-[#C9A24A]/20 bg-[#020001]/60 h-44 flex flex-col justify-end">
+                        <Image
+                          src={getImageSrc(cat.image)}
+                          alt={cat.name}
+                          fill
+                          className="object-cover"
+                          unoptimized={cat.image.startsWith("data:")}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#020001] via-[#020001]/60 to-transparent" />
+                        <div className="relative z-10 p-3 flex items-end justify-between">
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm text-white truncate">{cat.name}</div>
+                            {isDefault && (
+                              <span className="text-[10px] text-[#C1DD13] font-semibold">Default</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 ml-2">
+                            <button
+                              onClick={() => {
+                                setEditingExploreCat(cat);
+                                setExploreCatFormName(cat.name);
+                                setExploreCatFormImage(cat.image);
+                                setExploreCatFormDesc(cat.description || "");
+                                setIsExploreCatModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg bg-[#241124]/90 text-[#C9A24A] hover:text-white border border-[#C9A24A]/40 transition-colors"
+                              title="Edit category"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (isDefault) {
+                                  alert("Default categories cannot be deleted. You can edit their image and description.");
+                                  return;
+                                }
+                                if (confirm(`Delete category "${cat.name}"? Products in this category will not be reassigned.`)) {
+                                  deleteExploreCategory(cat.id);
+                                  showToast(`Deleted category "${cat.name}"`);
+                                }
+                              }}
+                              className={`p-1.5 rounded-lg border transition-colors ${
+                                isDefault
+                                  ? "bg-[#020001]/80 text-gray-600 border-gray-700 cursor-not-allowed"
+                                  : "bg-red-950/60 text-red-300 hover:text-white border-red-500/30"
+                              }`}
+                              title={isDefault ? "Default category (cannot delete)" : "Delete category"}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── SECTION B: Featured / Filter Categories ── */}
+              <div className="glass-card rounded-2xl p-5 border border-[#C9A24A]/25 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-[#3B1635]">
+                  <div>
+                    <h2 className="text-lg font-bold font-serif text-[#FFF7EA] flex items-center gap-2">
+                      <Tag size={18} className="text-[#C9A24A]" />
+                      <span>Cake Filter Tags <span className="text-sm font-normal text-[#DBD8C0]">(Catalogue & Menu Filters)</span></span>
+                    </h2>
+                    <p className="text-xs text-[#DBD8C0] mt-0.5">
+                      These are the filter tabs used to sort cakes in the menu and admin catalogue. You can add new flavour/type tags or remove unused ones.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Add new filter tag */}
+                <div className="p-4 rounded-xl bg-[#150717] border border-[#3B1635] space-y-3">
+                  <span className="text-xs font-bold text-[#FFF7EA]">Add New Filter Tag:</span>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newFeaturedCatName}
+                      onChange={(e) => {
+                        setNewFeaturedCatName(e.target.value);
+                        setNewFeaturedCatId(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+                      }}
+                      placeholder="e.g. Mango Cream"
+                      className="flex-1 px-3.5 py-2 bg-[#020001] border border-[#3B1635] focus:border-[#FF8A00] rounded-xl text-xs text-white"
+                    />
+                    <input
+                      type="text"
+                      value={newFeaturedCatId}
+                      onChange={(e) => setNewFeaturedCatId(e.target.value)}
+                      placeholder="id e.g. mango-cream"
+                      className="w-36 px-3.5 py-2 bg-[#020001] border border-[#3B1635] focus:border-[#FF8A00] rounded-xl text-xs text-white font-mono"
+                    />
+                    <button
+                      onClick={() => {
+                        if (!newFeaturedCatName.trim() || !newFeaturedCatId.trim()) {
+                          alert("Please enter both name and ID.");
+                          return;
+                        }
+                        addFeaturedCategory({ id: newFeaturedCatId.trim(), name: newFeaturedCatName.trim() });
+                        setNewFeaturedCatName("");
+                        setNewFeaturedCatId("");
+                        showToast(`Added filter tag "${newFeaturedCatName.trim()}".`);
+                      }}
+                      className="px-4 py-2 bg-[#FF8A00] text-white font-bold text-xs rounded-xl hover:bg-[#ff991a] shrink-0"
+                    >
+                      + Add Tag
+                    </button>
+                  </div>
+                </div>
+
+                {/* Existing tags list */}
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((cat) => {
+                    const isProtected = cat.id === "all";
+                    return (
+                      <div
+                        key={cat.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#241124] border border-[#C9A24A]/25 text-xs"
+                      >
+                        <span className="text-[#FFF7EA] font-semibold">{cat.name}</span>
+                        <span className="text-[10px] font-mono text-[#C9A24A]/70">{cat.id}</span>
+                        {!isProtected && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Remove filter tag "${cat.name}"? Cakes filed under this category will still exist but won't appear in this filter.`)) {
+                                deleteFeaturedCategory(cat.id);
+                                showToast(`Removed filter tag "${cat.name}".`);
+                              }
+                            }}
+                            className="ml-1 text-red-400 hover:text-red-200 transition-colors"
+                            title="Remove tag"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-[#020001] border border-[#3B1635]">
+                  <ShieldAlert size={14} className="text-[#C9A24A] shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-[#DBD8C0]">
+                    Adding a new filter tag here makes it selectable when editing cakes. Products already saved under a deleted filter tag will still exist — they simply won't appear under that filter.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ADD / EDIT EXPLORE CATEGORY MODAL                         */}
+      {/* ========================================================= */}
+      {isExploreCatModalOpen && (
+        <div className="fixed inset-0 z-50 bg-[#020001]/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#241124] border border-[#C9A24A]/40 rounded-3xl max-w-lg w-full shadow-2xl p-6 sm:p-8 relative animate-fadeIn my-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[#3B1635]">
+              <div>
+                <h2 className="text-xl font-bold font-serif text-[#FFF7EA]">
+                  {editingExploreCat ? `Edit: ${editingExploreCat.name}` : "Add New Explore Category"}
+                </h2>
+                <p className="text-xs text-[#DBD8C0]">
+                  This category will appear on the homepage showcase grid.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsExploreCatModalOpen(false)}
+                className="p-1.5 rounded-full bg-[#020001] text-[#DBD8C0] hover:text-white border border-[#3B1635]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!exploreCatFormName.trim() || !exploreCatFormImage.trim()) {
+                  alert("Please provide a category name and image.");
+                  return;
+                }
+                if (editingExploreCat) {
+                  updateExploreCategory(editingExploreCat.id, {
+                    name: exploreCatFormName.trim(),
+                    image: exploreCatFormImage.trim(),
+                    description: exploreCatFormDesc.trim(),
+                  });
+                  showToast(`Updated category "${exploreCatFormName.trim()}".`);
+                } else {
+                  addExploreCategory({
+                    name: exploreCatFormName.trim(),
+                    image: exploreCatFormImage.trim(),
+                    description: exploreCatFormDesc.trim(),
+                    iconName: "Sparkles",
+                  });
+                  showToast(`Added new category "${exploreCatFormName.trim()}".`);
+                }
+                setIsExploreCatModalOpen(false);
+              }}
+              className="space-y-4 mt-5"
+            >
+              {/* Category Name */}
+              <div>
+                <label className="block text-xs font-semibold text-[#DBD8C0] mb-1">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  value={exploreCatFormName}
+                  onChange={(e) => setExploreCatFormName(e.target.value)}
+                  placeholder="e.g. Mango Special Cakes"
+                  required
+                  className="w-full px-3.5 py-2.5 bg-[#020001]/80 border border-[#3B1635] focus:border-[#FF8A00] rounded-xl text-xs text-white"
+                />
+              </div>
+
+              {/* Category Image */}
+              <div>
+                <label className="block text-xs font-semibold text-[#DBD8C0] mb-1.5 flex items-center gap-1.5">
+                  <ImageIcon size={13} className="text-[#C9A24A]" />
+                  Category Image *
+                </label>
+
+                {/* Image preview */}
+                {exploreCatFormImage && (
+                  <div className="relative w-full h-36 rounded-xl overflow-hidden border border-[#C9A24A]/30 mb-2">
+                    <Image
+                      src={exploreCatFormImage}
+                      alt="Category preview"
+                      fill
+                      className="object-cover"
+                      unoptimized={exploreCatFormImage.startsWith("data:")}
+                    />
+                  </div>
+                )}
+
+                {/* Upload zone */}
+                <div
+                  onClick={() => exploreCatFileRef.current?.click()}
+                  className="p-4 rounded-xl border-2 border-dashed border-[#C9A24A]/40 hover:border-[#FF8A00] bg-[#241124]/50 cursor-pointer text-center transition-all"
+                >
+                  <input
+                    type="file"
+                    ref={exploreCatFileRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setIsExploreCatUploading(true);
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const img = document.createElement("img");
+                        img.onload = () => {
+                          const canvas = document.createElement("canvas");
+                          const MAX = 900;
+                          let w = img.width, h = img.height;
+                          if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } }
+                          else { if (h > MAX) { w *= MAX / h; h = MAX; } }
+                          canvas.width = w; canvas.height = h;
+                          canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+                          setExploreCatFormImage(canvas.toDataURL("image/jpeg", 0.85));
+                          setIsExploreCatUploading(false);
+                        };
+                        img.src = ev.target?.result as string;
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  {isExploreCatUploading ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <RefreshCw size={20} className="text-[#FF8A00] animate-spin" />
+                      <p className="text-xs text-[#FF8A00] font-bold">Processing image...</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <Upload size={20} className="text-[#FF8A00]" />
+                      <p className="text-xs text-white font-bold">Click to upload category image</p>
+                      <p className="text-[10px] text-[#DBD8C0]/70">JPEG, PNG, WebP — compressed automatically</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Preset quick-picks */}
+                <div className="mt-2">
+                  <p className="text-[11px] text-[#DBD8C0] mb-1.5">Or pick a bakery preset:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_IMAGES.map((img) => (
+                      <button
+                        key={img.path}
+                        type="button"
+                        onClick={() => setExploreCatFormImage(img.path)}
+                        className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                          exploreCatFormImage === img.path
+                            ? "bg-[#C9A24A] text-black font-bold border-[#C9A24A]"
+                            : "bg-[#241124] text-[#DBD8C0] border-[#3B1635] hover:border-[#C9A24A]"
+                        }`}
+                      >
+                        🎂 {img.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-semibold text-[#DBD8C0] mb-1">
+                  Short Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={exploreCatFormDesc}
+                  onChange={(e) => setExploreCatFormDesc(e.target.value)}
+                  placeholder="e.g. Seasonal mango fresh cream cakes made fresh daily."
+                  className="w-full px-3.5 py-2.5 bg-[#020001]/80 border border-[#3B1635] focus:border-[#FF8A00] rounded-xl text-xs text-white resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#3B1635]">
+                <button
+                  type="button"
+                  onClick={() => setIsExploreCatModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-[#020001] text-xs font-semibold text-[#DBD8C0] hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="orange-glow-btn px-6 py-2.5 rounded-xl text-white font-bold text-xs flex items-center gap-1.5"
+                >
+                  <Check size={14} />
+                  <span>{editingExploreCat ? "Save Changes" : "Add Category"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
