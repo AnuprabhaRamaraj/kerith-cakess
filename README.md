@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kerith Cakes - Separated Architecture (Frontend & Backend)
 
-## Getting Started
+A decoupled fullstack cake order & customized bakery platform with a dedicated **Next.js Frontend** and a standalone **Node.js Express + MySQL Backend**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 📁 Architecture Overview
+
+```
+kerith-cakess/
+├── backend/                       # Standalone Node.js & Express API Backend
+│   ├── src/
+│   │   ├── config/db.ts           # MySQL connection pool & automatic table migrations
+│   │   ├── controllers/           # Auth, Product, Upload, Images & Analytics Controllers
+│   │   ├── routes/                # Express API routes (/api/*)
+│   │   ├── data/                  # Initial products data seeder
+│   │   └── server.ts              # Express Server entrypoint (Port 5000)
+│   ├── .env                       # Backend database & port credentials
+│   ├── package.json               # Backend dependencies & build scripts
+│   └── tsconfig.json              # Backend TypeScript configuration
+│
+├── src/                           # Next.js Frontend (React 19 & Tailwind CSS)
+│   ├── app/                       # App Router UI (Pages, Layouts, Dashboard, Gallery, Menu)
+│   ├── components/                # Modular UI components
+│   ├── context/                   # ProductsContext & CartContext
+│   ├── config/api.ts              # Frontend API client communicating with Backend
+│   └── data/                      # Client fallbacks & constants
+│
+├── public/                        # Static assets & cake images
+├── next.config.ts                 # Next.js config with API proxy rewrites to Backend
+└── package.json                   # Root scripts for running Frontend & Backend
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Getting Started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Run Backend (Node.js)
 
-## Learn More
+```bash
+# In project root:
+npm run dev:be
 
-To learn more about Next.js, take a look at the following resources:
+# Or navigate directly to backend directory:
+cd backend
+npm run dev
+```
+> The Node.js Express server starts on **http://localhost:5000**.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 2. Run Frontend (Next.js)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# In project root:
+npm run dev:fe
+# or
+npm run dev
+```
+> Next.js runs on **http://localhost:3000** and automatically proxies requests (`/api/*`) to the Node.js backend.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔌 API Endpoints (Node.js Backend)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | API status & endpoint directory |
+| `GET` | `/api/products` | Fetch all products from MySQL (auto-seeds defaults) |
+| `POST` | `/api/products` | Create a new cake product |
+| `PUT` | `/api/products` | Update an existing product |
+| `DELETE` | `/api/products?id={id}` | Delete a product |
+| `POST` | `/api/users/login` | Admin authentication |
+| `GET` | `/api/users` | List admin users |
+| `POST` | `/api/users` | Add new admin account (up to 3) |
+| `POST` | `/api/upload` | Upload cake photos via multer to `/images/cakes/` |
+| `DELETE` | `/api/upload?imageUrl=...` | Delete uploaded cake photo |
+| `GET` | `/api/analytics/realtime` | Google Analytics 4 Realtime report |
+| `GET` | `/api/init-db` | Verify MySQL connection & stats |

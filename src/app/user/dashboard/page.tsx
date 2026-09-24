@@ -164,34 +164,51 @@ export default function AdminDashboardPage() {
   // Toast Notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load Admin Users and Session from localStorage on mount
+  // Load Admin Users and Session from Backend API / localStorage on mount
   useEffect(() => {
-    try {
-      const savedUsers = localStorage.getItem(ADMIN_USERS_STORAGE_KEY);
-      if (savedUsers) {
-        const parsed = JSON.parse(savedUsers);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAdminUsers(parsed);
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("/api/users");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.users) && data.users.length > 0) {
+            setAdminUsers(data.users);
+            localStorage.setItem(ADMIN_USERS_STORAGE_KEY, JSON.stringify(data.users));
+          }
         }
+      } catch (e) {
+        console.warn("Could not fetch users from backend API, using local storage:", e);
       }
 
-      const activeSessionEmail = localStorage.getItem("kerith_active_admin_email");
-      if (activeSessionEmail) {
-        const currentUsers = savedUsers ? JSON.parse(savedUsers) : DEFAULT_ADMIN_USERS;
-        const matched = currentUsers.find(
-          (u: AdminUser) => u.email.toLowerCase() === activeSessionEmail.toLowerCase()
-        );
-        if (matched) {
-          setCurrentLoggedInAdmin(matched);
-          setIsAdminLoggedIn(true);
+      try {
+        const savedUsers = localStorage.getItem(ADMIN_USERS_STORAGE_KEY);
+        if (savedUsers) {
+          const parsed = JSON.parse(savedUsers);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAdminUsers(parsed);
+          }
         }
+
+        const activeSessionEmail = localStorage.getItem("kerith_active_admin_email");
+        if (activeSessionEmail) {
+          const currentUsers = savedUsers ? JSON.parse(savedUsers) : DEFAULT_ADMIN_USERS;
+          const matched = currentUsers.find(
+            (u: AdminUser) => u.email.toLowerCase() === activeSessionEmail.toLowerCase()
+          );
+          if (matched) {
+            setCurrentLoggedInAdmin(matched);
+            setIsAdminLoggedIn(true);
+          }
+        }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+
+    fetchUsers();
   }, []);
 
-  // Save Admin Users to localStorage whenever updated
+  // Save Admin Users to API & localStorage whenever updated
   const saveAdminUsers = (usersList: AdminUser[]) => {
     setAdminUsers(usersList);
     try {
@@ -340,7 +357,7 @@ export default function AdminDashboardPage() {
   };
 
   // Handle Admin Login
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
 
@@ -354,6 +371,33 @@ export default function AdminDashboardPage() {
     }
 
     setIsAuthenticating(true);
+    try {
+      // 1. Try MySQL Database API authentication
+      const res = await fetch("/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usernameOrEmail: emailInput.trim(),
+          password: passwordInput,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          setCurrentLoggedInAdmin(data.user);
+          setIsAdminLoggedIn(true);
+          localStorage.setItem("kerith_active_admin_email", data.user.email);
+          showToast(`Welcome, ${data.user.name}!`);
+          setIsAuthenticating(false);
+          return;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("API login check skipped, falling back to local credentials:", apiErr);
+    }
+
+    // 2. Resilient local fallback
     setTimeout(() => {
       setIsAuthenticating(false);
       const inputTrim = emailInput.trim().toLowerCase();
@@ -372,7 +416,7 @@ export default function AdminDashboardPage() {
       } else {
         setAuthError("Invalid username/email or password. Please check your admin credentials.");
       }
-    }, 400);
+    }, 300);
   };
 
   const handleAdminLogout = () => {
@@ -585,7 +629,7 @@ export default function AdminDashboardPage() {
     setIsAdminUserModalOpen(true);
   };
 
-  const handleSaveAdminUser = (e: React.FormEvent) => {
+  const handleSaveAdminUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userFormName.trim() || !userFormEmail.trim() || !userFormPassword.trim()) {
       alert("Please fill all user fields.");
@@ -604,6 +648,19 @@ export default function AdminDashboardPage() {
           : u
       );
       saveAdminUsers(updated);
+
+      fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingAdminUser.id,
+          name: userFormName,
+          email: userFormEmail,
+          password: userFormPassword,
+          role: editingAdminUser.role || "Admin",
+        }),
+      }).catch((e) => console.warn("Could not sync user update to DB:", e));
+
       if (currentLoggedInAdmin?.id === editingAdminUser.id) {
         setCurrentLoggedInAdmin({
           ...currentLoggedInAdmin,
@@ -628,6 +685,13 @@ export default function AdminDashboardPage() {
         createdAt: "Today",
       };
       saveAdminUsers([...adminUsers, newUser]);
+
+      fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      }).catch((e) => console.warn("Could not sync new user to DB:", e));
+
       showToast(`Admin account "${userFormName}" created!`);
     }
     setIsAdminUserModalOpen(false);
@@ -641,6 +705,11 @@ export default function AdminDashboardPage() {
     if (confirm(`Remove admin account for "${user.name}" (${user.email})?`)) {
       const updated = adminUsers.filter((u) => u.id !== user.id);
       saveAdminUsers(updated);
+
+      fetch(`/api/users?id=${encodeURIComponent(user.id)}`, {
+        method: "DELETE",
+      }).catch((e) => console.warn("Could not sync user deletion to DB:", e));
+
       if (currentLoggedInAdmin?.id === user.id) {
         handleAdminLogout();
       } else {

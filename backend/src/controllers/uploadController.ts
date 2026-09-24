@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
-import { getDbPool, initDatabase } from "@/lib/db";
+import multer from "multer";
+import { getDbPool, initDatabase } from "../config/db";
 
 const DEFAULT_PRESET_FILENAMES = [
   "black_forest.jpg",
@@ -13,23 +14,18 @@ const DEFAULT_PRESET_FILENAMES = [
   "logo.jpg",
 ];
 
-export async function POST(req: NextRequest) {
-  try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+// Configure local storage for uploads
+const uploadDir = path.join(process.cwd(), "public", "images", "cakes");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-    if (!file) {
-      return NextResponse.json(
-        { error: "No image file provided." },
-        { status: 400 }
-      );
-    }
-
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Sanitize filename and create unique filename
-    const originalName = file.name || "cake-photo.jpg";
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const originalName = file.originalname || "cake-photo.jpg";
     const extension = path.extname(originalName) || ".jpg";
     const baseName = path
       .basename(originalName, extension)
@@ -37,17 +33,25 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]/g, "-")
       .substring(0, 30);
     const uniqueFilename = `${baseName}-${Date.now()}${extension}`;
+    cb(null, uniqueFilename);
+  },
+});
 
-    // Target storage directory: public/images/cakes
-    const uploadDir = path.join(process.cwd(), "public", "images", "cakes");
+export const uploadMiddleware = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
 
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+export const handleImageUpload = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      res.status(400).json({ error: "No image file provided." });
+      return;
     }
 
-    const filePath = path.join(uploadDir, uniqueFilename);
-    fs.writeFileSync(filePath, buffer);
-
+    const uniqueFilename = file.filename;
     const relativeUrl = `/images/cakes/${uniqueFilename}`;
 
     // Store in MySQL database images table
@@ -61,55 +65,48 @@ export async function POST(req: NextRequest) {
           imgId,
           uniqueFilename,
           relativeUrl,
-          originalName,
+          file.originalname || "",
           "cakes",
-          file.size || buffer.length,
-          file.type || "image/jpeg",
+          file.size || 0,
+          file.mimetype || "image/jpeg",
         ]
       );
     } catch (dbErr) {
       console.warn("Could not save image record to MySQL (file was saved to disk):", dbErr);
     }
 
-    return NextResponse.json({
+    res.json({
       success: true,
       url: relativeUrl,
       filename: uniqueFilename,
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Image upload error:", error);
-    return NextResponse.json(
-      { error: "Failed to save image locally." },
-      { status: 500 }
-    );
+    res.status(500).json({ error: "Failed to save image locally." });
   }
-}
+};
 
-export async function DELETE(req: NextRequest) {
+export const handleImageDelete = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { searchParams } = new URL(req.url);
-    const imageUrl = searchParams.get("imageUrl");
+    const imageUrl = (req.query.imageUrl as string) || (req.body.imageUrl as string);
 
     if (!imageUrl) {
-      return NextResponse.json(
-        { error: "Image URL is required for deletion." },
-        { status: 400 }
-      );
+      res.status(400).json({ error: "Image URL is required for deletion." });
+      return;
     }
 
-    // Only allow deletion within /images/cakes/
     const filename = path.basename(imageUrl);
 
     // Prevent deletion of seed/default preset images
     if (DEFAULT_PRESET_FILENAMES.includes(filename)) {
-      return NextResponse.json({
+      res.json({
         success: true,
         message: "Default preset image preserved (not deleted).",
       });
+      return;
     }
 
-    const targetPath = path.join(process.cwd(), "public", "images", "cakes", filename);
-
+    const targetPath = path.join(uploadDir, filename);
     if (fs.existsSync(targetPath)) {
       fs.unlinkSync(targetPath);
     }
@@ -126,15 +123,12 @@ export async function DELETE(req: NextRequest) {
       console.warn("Could not delete image from MySQL:", dbErr);
     }
 
-    return NextResponse.json({
+    res.json({
       success: true,
       message: `Deleted old image ${filename} successfully.`,
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Image deletion error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete old image file." },
-      { status: 500 }
-    );
+    res.status(500).json({ error: "Failed to delete old image file." });
   }
-}
+};

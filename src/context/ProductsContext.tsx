@@ -58,40 +58,58 @@ export const ProductsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [categories, setCategories] = useState<FeaturedCategory[]>(INITIAL_FEATURED_CATEGORIES);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load all data from localStorage on mount
+  // Load all data from MySQL /api/products and localStorage on mount
   useEffect(() => {
-    try {
-      // Products
-      const savedProducts = localStorage.getItem(STORAGE_KEY);
-      if (savedProducts) {
-        const parsed = JSON.parse(savedProducts);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setProducts(parsed);
+    const initData = async () => {
+      try {
+        // Try fetching fresh products from MySQL backend API
+        const prodRes = await fetch("/api/products");
+        if (prodRes.ok) {
+          const prodData = await prodRes.json();
+          if (prodData.success && Array.isArray(prodData.products) && prodData.products.length > 0) {
+            setProducts(prodData.products);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(prodData.products));
+          }
         }
+      } catch (apiErr) {
+        console.warn("Backend API not reachable yet, reading from local cache:", apiErr);
       }
 
-      // Explore categories
-      const savedExplore = localStorage.getItem(EXPLORE_CATS_KEY);
-      if (savedExplore) {
-        const parsed = JSON.parse(savedExplore);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setExploreCategories(parsed);
+      try {
+        // Fallback or read from localStorage
+        const savedProducts = localStorage.getItem(STORAGE_KEY);
+        if (savedProducts) {
+          const parsed = JSON.parse(savedProducts);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProducts(parsed);
+          }
         }
-      }
 
-      // Featured/filter categories
-      const savedFeatured = localStorage.getItem(FEATURED_CATS_KEY);
-      if (savedFeatured) {
-        const parsed = JSON.parse(savedFeatured);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setCategories(parsed);
+        // Explore categories
+        const savedExplore = localStorage.getItem(EXPLORE_CATS_KEY);
+        if (savedExplore) {
+          const parsed = JSON.parse(savedExplore);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setExploreCategories(parsed);
+          }
         }
+
+        // Featured/filter categories
+        const savedFeatured = localStorage.getItem(FEATURED_CATS_KEY);
+        if (savedFeatured) {
+          const parsed = JSON.parse(savedFeatured);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCategories(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load data from localStorage", err);
+      } finally {
+        setIsLoaded(true);
       }
-    } catch (err) {
-      console.error("Failed to load data from localStorage", err);
-    } finally {
-      setIsLoaded(true);
-    }
+    };
+
+    initData();
   }, []);
 
   // Sync products to localStorage
@@ -145,21 +163,43 @@ export const ProductsProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     setProducts((prev) => [created, ...prev]);
+
+    // Async sync to MySQL
+    fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(created),
+    }).catch((e) => console.warn("Could not sync added product to DB:", e));
+
     return created;
   };
 
   const updateProduct = (id: string, updatedFields: Partial<ProductWithMeta>) => {
+    let updatedProduct: ProductWithMeta | null = null;
     setProducts((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, ...updatedFields, updatedAt: Date.now() }
-          : item
-      )
+      prev.map((item) => {
+        if (item.id === id) {
+          updatedProduct = { ...item, ...updatedFields, updatedAt: Date.now() };
+          return updatedProduct;
+        }
+        return item;
+      })
     );
+
+    if (updatedProduct) {
+      fetch("/api/products", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProduct),
+      }).catch((e) => console.warn("Could not sync updated product to DB:", e));
+    }
   };
 
   const deleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((item) => item.id !== id));
+    fetch(`/api/products?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }).catch((e) => console.warn("Could not sync deleted product to DB:", e));
   };
 
   const toggleFeatured = (id: string) => {
